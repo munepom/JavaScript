@@ -1,6 +1,6 @@
 /**
  * Clock
- * @author munepuyo
+ * @author munepom
  * 
  * usage:
  * var clock = new Clock();
