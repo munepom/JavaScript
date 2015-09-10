@@ -6,12 +6,12 @@
 (function(global) {
 "use strict;"
 	
-if (! window.AudioContext) {
+// var --------------------------------
+var AudioContext = window.AudioContext || window.webkitAudioContext; // Safariでは、ベンダプレフィックスが必要かいな
+if (! AudioContext) {
 	return;
 }
-
-// var --------------------------------
-var context = new window.AudioContext();
+var context = new AudioContext();
 var destination = context.destination;
 
 // Class ------------------------------------------------
@@ -43,6 +43,19 @@ Oscillator["prototype"]["sineGis"] = Oscillator_sineGis; // Oscillator#sineGis(o
 Oscillator["prototype"]["sineA"] = Oscillator_sineA; // Oscillator#sineA(octave:Integer):OscillatorNode
 Oscillator["prototype"]["sineAis"] = Oscillator_sineAis; // Oscillator#sineAis(octave:Integer):OscillatorNode
 Oscillator["prototype"]["sineH"] = Oscillator_sineH; // Oscillator#sineH(octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["squareC"] = Oscillator_squareC; // Oscillator#squareC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareCis"] = Oscillator_squareCis; // Oscillator#squareCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareD"] = Oscillator_squareD; // Oscillator#squareD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareDis"] = Oscillator_squareDis; // Oscillator#squareDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareE"] = Oscillator_squareE; // Oscillator#squareE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareF"] = Oscillator_squareF; // Oscillator#squareF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareFis"] = Oscillator_squareFis; // Oscillator#squareFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareG"] = Oscillator_squareG; // Oscillator#squareG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareGis"] = Oscillator_squareGis; // Oscillator#squareGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareA"] = Oscillator_squareA; // Oscillator#squareA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareAis"] = Oscillator_squareAis; // Oscillator#squareAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareH"] = Oscillator_squareH; // Oscillator#squareH(octave:Integer):OscillatorNode
 
 
 // Implementation ---------------------------------------
@@ -114,7 +127,7 @@ function Oscillator_createCustom2Gain(frequency, gain) {
  * http://homepage1.nifty.com/musica/enharmonic.htm
  */
 function Oscillator_getFrequencyEqualTemperament(noteName, octave) {
-	var base = 33;
+	var base = 32.5;
 	var ratio;
 	switch (noteName) {
 	case 'C':
