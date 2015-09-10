@@ -57,6 +57,31 @@ Oscillator["prototype"]["squareA"] = Oscillator_squareA; // Oscillator#squareA(o
 Oscillator["prototype"]["squareAis"] = Oscillator_squareAis; // Oscillator#squareAis(octave:Integer):OscillatorNode
 Oscillator["prototype"]["squareH"] = Oscillator_squareH; // Oscillator#squareH(octave:Integer):OscillatorNode
 
+Oscillator["prototype"]["sawtoothC"] = Oscillator_sawtoothC; // Oscillator#sawtoothC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothCis"] = Oscillator_sawtoothCis; // Oscillator#sawtoothCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothD"] = Oscillator_sawtoothD; // Oscillator#sawtoothD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothDis"] = Oscillator_sawtoothDis; // Oscillator#sawtoothDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothE"] = Oscillator_sawtoothE; // Oscillator#sawtoothE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothF"] = Oscillator_sawtoothF; // Oscillator#sawtoothF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothFis"] = Oscillator_sawtoothFis; // Oscillator#sawtoothFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothG"] = Oscillator_sawtoothG; // Oscillator#sawtoothG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothGis"] = Oscillator_sawtoothGis; // Oscillator#sawtoothGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothA"] = Oscillator_sawtoothA; // Oscillator#sawtoothA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothAis"] = Oscillator_sawtoothAis; // Oscillator#sawtoothAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothH"] = Oscillator_sawtoothH; // Oscillator#sawtoothH(octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["triangleC"] = Oscillator_triangleC; // Oscillator#triangleC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleCis"] = Oscillator_triangleCis; // Oscillator#triangleCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleD"] = Oscillator_triangleD; // Oscillator#triangleD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleDis"] = Oscillator_triangleDis; // Oscillator#triangleDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleE"] = Oscillator_triangleE; // Oscillator#triangleE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleF"] = Oscillator_triangleF; // Oscillator#triangleF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleFis"] = Oscillator_triangleFis; // Oscillator#triangleFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleG"] = Oscillator_triangleG; // Oscillator#triangleG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleGis"] = Oscillator_triangleGis; // Oscillator#triangleGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleA"] = Oscillator_triangleA; // Oscillator#triangleA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleAis"] = Oscillator_triangleAis; // Oscillator#triangleAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleH"] = Oscillator_triangleH; // Oscillator#triangleH(octave:Integer):OscillatorNode
 
 // Implementation ---------------------------------------
 function Oscillator_getAudioContext() {
