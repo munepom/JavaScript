@@ -1,3 +1,45 @@
+<div>KeyBoard</div>
+<br />
+<div>
+    表示オクターブ数&nbsp;
+    <select id="DisplayOctaveSelector">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3" selected>3</option>
+        <option value="4">4</option>
+        <option value="4">5</option>
+        <option value="4">6</option>
+    </select>
+</div>
+<br />
+<div>
+    基底オクターブ&nbsp;
+    <select id="BaseOctaveSelector">
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="4">5</option>
+        <option value="4">6</option>
+    </select>
+</div>
+<br />
+<div>
+    波形選択&nbsp;
+    <select id="WaveSelector">
+        <option value="sine">サイン波</option>
+        <option value="sawtooth">ノコギリ波</option>
+        <option value="square">矩形波</option>
+        <option value="triangle">三角波</option>
+        <option value="custom">カスタム波</option>
+    </select>
+</div>
+<div>
+    音量&nbsp;<input id="VolumeSlider" type="range" min="0" max="100" step="1" value="20"></input>&nbsp;<span id="VolumeDisplay"></span>
+</div>
+<br />
+<svg id="SVGKeyboard" xml:space="preserve"></svg>
 <script type="text/javascript">
 /**
  * oscillator.js
@@ -476,8 +518,7 @@ if ("process" in global) {
 global["Oscillator"] = Oscillator;
 
 })((this || 0).self || global);
-</script>
-<script type="text/javascript">
+
 // SVG 描くよ！
 // TODO: 設定も SVG で描き、このクラスで管理できるようにする
 (function(global) {
@@ -507,7 +548,11 @@ global["Oscillator"] = Oscillator;
     
     SVGKeyboard["prototype"]["draw"] = SVGKeyboard_draw; // SVGKeyboard#draw(octave:Integer):Void
     SVGKeyboard["prototype"]["init"] = SVGKeyboard_init; // SVGKeyboard#init(displayOctave:Integer, osc:Oscillator, baseOctave:Integer, waveForm:String, volume:Integer):Void
+    SVGKeyboard["prototype"]["start"] = SVGKeyboard_start; // SVGKeyboard_start(waveForm:String, baseOctave:Integer, volume:Integer, context:AudioContext, osc:Oscillator, destination:DestinationNode, oscHash:Object, gainHash:Object, getStartedNum:function):Void
     SVGKeyboard["prototype"]["getStartedNum"] = SVGKeyboard_getStartedNum; // SVGKeyboard_getStartedNum(oscHash:Object):Integer
+    SVGKeyboard["prototype"]["getStopTime"] = SVGKeyboard_getStopTime; // SVGKeyboard_getStopTime(context:AudioContext):Float
+    SVGKeyboard["prototype"]["stopKey"] = SVGKeyboard_stopKey; // SVGKeyboard_stopKey(id:String, context:AudioContext, oscHash:Object, oscNode:OscillatorNode, gainNode:GainNode):Void
+    SVGKeyboard["prototype"]["stop"] = SVGKeyboard_stop; // SVGKeyboard_stop(id:String, context:AudioContext, oscHash:Object, gainHash:Object, stopKey:function):Void
     
     // Implementation ---------------------------------------
     function SVGKeyboard_setOscillator(osc) {
@@ -611,13 +656,20 @@ global["Oscillator"] = Oscillator;
                 }
             }
         }
-        elmSvg.innerHTML += htmlWhite + htmlBlack;
+//        elmSvg.innerHTML += htmlWhite + htmlBlack; // Safari ではアカン！
+        var ns = "http://www.w3.org/2000/svg";
+    var html = '<svg  xmlns="' + ns + '">' + htmlWhite + htmlBlack + '</svg>';
+        var r1 = new DOMParser().parseFromString(html, 'text/xml');
+        var childNodes = r1.documentElement.childNodes;
+        var len = childNodes.length;
+        for (i = 0; i < len; i++) {
+            elmSvg.appendChild(document.importNode(childNodes[i], true));
+        }
     }
 
     function SVGKeyboard_init() {
         var baseOctave = this.baseOctave;
         var waveForm = this.waveForm;
-    console.log(waveForm);
         var volume = this.volume;
         var osc = this.osc;
         var context = osc.getAudioContext();
@@ -629,54 +681,43 @@ global["Oscillator"] = Oscillator;
         var oscHash = {}; // 発振中の autioNode を保持し、再利用可能とする。とりあえず。メモリどうなるん？
         var gainHash = {}; // 発振中の gainNode を保持し、再利用可能とする。とりあえず。メモリどうなるん？
         var getStartedNum = this.getStartedNum;
+        var getStopTime = this.getStopTime;
+        var stopKey = this.stopKey;
+        var start = this.start;
+        var stop = this.stop;
         var i = 0;
         var len = elmKeyArr.length;
         for (i = 0; i < len; i++) {
             elmKey = elmKeyArr[i];
-            elmKey.addEventListener('mousedown', function(event) {
-                // start
-                var id = this.id;
-                var tmpArr = id.split('_');
-                var scale = tmpArr[1];
-                var octave = parseInt(tmpArr[2]) + baseOctave;
-                var gain = volume / (1000 * (getStartedNum(gainHash) + 1) );
-                var oscNode = oscHash[id];
-                var gainNode = gainHash[id];
-                if (oscNode && gainNode) {
-                    gainNode.gain.value = 0;
-                    oscNode.stop(context.currentTime + 0.01); // stop すると、再生成必須となる
-                    gainNode.gain.value = gain;
-                }
-                oscNode = osc[waveForm + scale](octave);
-                gainNode = gainNode || osc.createGain(gain);
-                oscNode.connect(gainNode);
-                gainNode.connect(destination);
-                oscHash[id] = oscNode;
-                gainHash[id] = gainNode;
-                oscNode.start(context.currentTime);
-            });
-            elmKey.addEventListener('mouseup', function(event) {
-                // stop
-                var id = this.id;
-                var oscNode = oscHash[id];
-                var gainNode = gainHash[id];
-                if (oscNode && gainNode) {
-                    gainNode.gain.value = 0;
-                    oscNode.stop(context.currentTime + 0.01); // stop すると、再生成必須となる
-//                  oscNode.disconnect(gainNode); // disconnect は、プチプチノイズ発生...
-                }
-            });
-            elmKey.addEventListener('mouseleave', function(event) {
-                // stop
-                var id = this.id;
-                var oscNode = oscHash[id];
-                var gainNode = gainHash[id];
-                if (oscNode && gainNode) {
-                    gainNode.gain.value = 0;
-                    oscNode.stop(context.currentTime + 0.01); // stop すると、再生成必須となる
-//                  oscNode.disconnect(gainNode); // disconnect は、プチプチノイズ発生...
-                }
-            });
+            elmKey.addEventListener('mousedown', start(waveForm, baseOctave, volume, context, osc, destination, oscHash, gainHash, getStartedNum));
+            elmKey.addEventListener('mouseup', stop(context, oscHash, gainHash, stopKey));
+            elmKey.addEventListener('mouseleave', stop(context, oscHash, gainHash, stopKey));
+        }
+    }
+    
+    function SVGKeyboard_start(waveForm, baseOctave, volume, context, osc, destination, oscHash, gainHash, getStartedNum) {
+        return function(event) {
+            // start
+            var id = this.id;
+            var tmpArr = id.split('_');
+            var scale = tmpArr[1];
+            var octave = parseInt(tmpArr[2]) + baseOctave;
+            var gain = volume / (1000 * (getStartedNum(gainHash) + 1) );
+            var oscNode = oscHash[id];
+            var gainNode = gainHash[id];
+            if (oscNode && gainNode) {
+                stopKey(id, context, oscHash, oscNode, gainNode);
+                gainNode.gain.value = gain;
+            }
+            else {
+                gainNode = osc.createGain(gain);
+            }
+            oscNode = osc[waveForm + scale](octave);
+            oscNode.connect(gainNode);
+            gainNode.connect(destination);
+            oscHash[id] = oscNode;
+            gainHash[id] = gainNode;
+            oscNode.start(context.currentTime || 0);
         }
     }
 
@@ -693,6 +734,30 @@ global["Oscillator"] = Oscillator;
         }
         return num;
     }
+    
+    function SVGKeyboard_getStopTime(context) {
+        return (context.currentTime || 0) + 0.01;
+    }
+    
+    function SVGKeyboard_stopKey(id, context, oscHash, oscNode, gainNode) {
+        gainNode.gain.value = 0;
+        var stopTime = (context.currentTime || 0) + 0.01;
+        oscNode.stop(stopTime); // 若干のディレイをかけて stop すると、再生成必須となるが、プチプチノイズが発生しない。
+        setTimeout(function(){ oscHash[id] = null }, stopTime); // Safari 対策
+//      oscNode.disconnect(gainNode); // disconnect は、プチプチノイズ発生...
+    }
+    
+    function SVGKeyboard_stop(context, oscHash, gainHash, stopKey) {
+        return function(event) {
+            // stop
+            var id = this.id; // this = element
+            var oscNode = oscHash[id];
+            var gainNode = gainHash[id];
+            if (oscNode && gainNode) {
+                stopKey(id, context, oscHash, oscNode, gainNode);
+            }
+        }
+    }
 
     // Exports ----------------------------------------------
     if ("process" in global) {
@@ -701,50 +766,7 @@ global["Oscillator"] = Oscillator;
     global["SVGKeyboard"] = SVGKeyboard;
 
 })((this || 0).self || global);
-</script>
-<div>KeyBoard</div>
-<br />
-<div>
-    表示オクターブ数&nbsp;
-    <select id="DisplayOctaveSelector">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3" selected>3</option>
-        <option value="4">4</option>
-        <option value="4">5</option>
-        <option value="4">6</option>
-    </select>
-</div>
-<br />
-<div>
-    基底オクターブ&nbsp;
-    <select id="BaseOctaveSelector">
-        <option value="0">0</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4" selected>4</option>
-        <option value="4">5</option>
-        <option value="4">6</option>
-    </select>
-</div>
-<br />
-<div>
-    波形選択&nbsp;
-    <select id="WaveSelector">
-        <option value="sine">サイン波</option>
-        <option value="sawtooth">ノコギリ波</option>
-        <option value="square">矩形波</option>
-        <option value="triangle">三角波</option>
-        <option value="custom">カスタム波</option>
-    </select>
-</div>
-<div>
-    音量&nbsp;<input id="VolumeSlider" type="range" min="0" max="100" step="1" value="20"></input>&nbsp;<span id="VolumeDisplay"></span>
-</div>
-<br />
-<svg id="SVGKeyboard" xml:space="preserve"></svg>
-<script type="text/javascript">
+
 document.addEventListener('DOMContentLoaded', function(event) {
     var getInputValue = function(elm) {
         return elm.value;
