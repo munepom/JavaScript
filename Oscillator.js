@@ -5,24 +5,48 @@
  */
 (function(global) {
 "use strict;"
-	
+
 // var --------------------------------
 var AudioContext = window.AudioContext || window.webkitAudioContext; // Safariでは、ベンダプレフィックスが必要かいな
 if (! AudioContext) {
+        alert('お使いのブラウザでは、AudioContext を使えません。\nSorry... Web Audio API is not supported in this browser.');
 	return;
 }
 var context = new AudioContext();
 var destination = context.destination;
+var funcFrequency = Oscillator_getFrequencyEqualTemperament; // 律取得関数 (音階の幅を設定する)
+
+var real; // real: 余弦項(cos)の配列 (伝統的なA項) // PeriodicWave 生成に用いる
+var imag; // imag: 正弦項(sin)の配列 (伝統的なB項) // PeriodicWave 生成に用いる
+// デフォルト PeriodicWave 用 real, imag 設定
+real = new Float32Array(10);
+imag = new Float32Array(10);
+for(var i = 0; i < 10; ++i) {
+        real[i] = imag[i] = 0;
+}
+imag[1] = 1;
+imag[2] = 0.5;
 
 // Class ------------------------------------------------
 function Oscillator() {
+        this.context = context;
+        this.destination = destination;
+        this.funcFrequency = funcFrequency;
+        this.real = real;
+        this.imag = imag;
 	return this;
 };
 
 // Header -----------------------------------------------
-Oscillator["prototype"]["getAudioContext"] = Oscillator_getAudioContext;
-Oscillator["prototype"]["getDestination"] = Oscillator_getDestination;
+Oscillator["prototype"]["getAudioContext"] = Oscillator_getAudioContext; // Oscillator#getAudioContext():AudioContext
+Oscillator["prototype"]["getDestination"] = Oscillator_getDestination; // Oscillator#getDestination():AudioDestinationNode
+Oscillator["prototype"]["createPeriodicWave"] = Oscillator_createPeriodicWave; // Oscillator#createPeriodicWave(real:Float32Array, imag:Float32Array):PeriodicWave
+Oscillator["prototype"]["setReal"] = Oscillator_setReal; // Oscillator#setReal(real:Float32Array):Void
+Oscillator["prototype"]["getReal"] = Oscillator_getReal; // Oscillator#getReal():PeriodicWave
+Oscillator["prototype"]["setImag"] = Oscillator_setImag; // Oscillator#setImag(imag:Float32Array):Void
+Oscillator["prototype"]["getImag"] = Oscillator_getImag; // Oscillator#getImag():PeriodicWave
 Oscillator["prototype"]["createOsc"]  = Oscillator_createOsc; // Oscillator#createOsc(type:String, frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createCustomOsc"] = Oscillator_createCustomOsc; // Oscillator#createCustomOsc(frequency:Integer):OscillatorNode
 Oscillator["prototype"]["createGain"] = Oscillator_createGain; // Oscillator#createGain(gainValue:Integer):GainNode
 Oscillator["prototype"]["createOsc2Gain"] = Oscillator_createOsc2Gain; // Oscillator#createOsc2Gain(type:String, frequency:Integer, gainValue:Integer):{OscillatorNode, GainNode}
 Oscillator["prototype"]["createSine"] = Oscillator_createSine; // Oscillator#createSine(frequency:Integer):OscillatorNode
@@ -30,6 +54,8 @@ Oscillator["prototype"]["createSquare"] = Oscillator_createSquare; // Oscillator
 Oscillator["prototype"]["createSawtooth"] = Oscillator_createSawtooth; // Oscillator#createSawtooth(frequency:Integer):OscillatorNode
 Oscillator["prototype"]["createTriangle"] = Oscillator_createTriangle; // Oscillator#createTriangle(frequency:Integer):OscillatorNode
 Oscillator["prototype"]["createCustom"] = Oscillator_createCustom; // Oscillator#createCustom(frequency:Integer):OscillatorNode
+
+Oscillator["prototype"]["getFrequencyEqualTemperament"] = Oscillator_getFrequencyEqualTemperament; // Oscillator_getFrequencyEqualTemperament(noteName:String, octave:Integer):OscillatorNode
 
 Oscillator["prototype"]["sineC"] = Oscillator_sineC; // Oscillator#sineC(octave:Integer):OscillatorNode
 Oscillator["prototype"]["sineCis"] = Oscillator_sineCis; // Oscillator#sineCis(octave:Integer):OscillatorNode
@@ -83,6 +109,20 @@ Oscillator["prototype"]["triangleA"] = Oscillator_triangleA; // Oscillator#trian
 Oscillator["prototype"]["triangleAis"] = Oscillator_triangleAis; // Oscillator#triangleAis(octave:Integer):OscillatorNode
 Oscillator["prototype"]["triangleH"] = Oscillator_triangleH; // Oscillator#triangleH(octave:Integer):OscillatorNode
 
+Oscillator["prototype"]["customC"] = Oscillator_customC; // Oscillator#customC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customCis"] = Oscillator_customCis; // Oscillator#customCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customD"] = Oscillator_customD; // Oscillator#customD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customDis"] = Oscillator_customDis; // Oscillator#customDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customE"] = Oscillator_customE; // Oscillator#customE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customF"] = Oscillator_customF; // Oscillator#customF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customFis"] = Oscillator_customFis; // Oscillator#customFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customG"] = Oscillator_customG; // Oscillator#customG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customGis"] = Oscillator_customGis; // Oscillator#customGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customA"] = Oscillator_customA; // Oscillator#customA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customAis"] = Oscillator_customAis; // Oscillator#customAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customH"] = Oscillator_customH; // Oscillator#customH(octave:Integer):OscillatorNode
+
+
 // Implementation ---------------------------------------
 function Oscillator_getAudioContext() {
 	return context;
@@ -92,11 +132,48 @@ function Oscillator_getDestination() {
 	return destination;
 }
 
+function Oscillator_setReal(real) {
+        this.real = real;
+}
+
+function Oscillator_getReal() {
+        return this.real;
+}
+
+function Oscillator_setImag(imag) {
+        this.imag = imag;
+}
+
+function Oscillator_getImag() {
+        return this.imag;
+}
+
+function Oscillator_getFuncFrequency() {
+        return this.funcFrequency();
+}
+
+function Oscillator_setFuncFrequency(funcFrequency) {
+        this.funcFrequency = funcFrequency;
+}
+
 function Oscillator_createOsc(type, frequency) {
 	var osc = context.createOscillator();
 	osc.type = type;
 	osc.frequency.value = frequency;
 	return osc;
+}
+
+function Oscillator_createCustomOsc(frequency, real, imag) {
+        var periodicWave = this.createPeriodicWave(real || this.real, imag || this.imag);
+	var osc = context.createOscillator();
+	osc.frequency.value = frequency;
+        osc.setPeriodicWave(periodicWave);
+	return osc;
+}
+
+function Oscillator_createPeriodicWave(real, imag) { // createPeriodicWave により任意の波形を生成し、OscillatorNode にセットすることで、custom として利用可能
+        var periodicWave = context.createPeriodicWave(real, imag);
+        return periodicWave;
 }
 
 function Oscillator_createGain(gainValue) {
@@ -106,8 +183,8 @@ function Oscillator_createGain(gainValue) {
 }
 
 function Oscillator_createOsc2Gain(type, frequency, gainValue) {
-	var osc = Oscillator_createOsc(type, frequency);
-	var gain = Oscillator_createGain(gainValue);
+	var osc = this.createOsc(type, frequency);
+	var gain = this.createGain(gainValue);
 	osc.connect(gain);
 	return {
 		osc:      osc,
@@ -116,35 +193,36 @@ function Oscillator_createOsc2Gain(type, frequency, gainValue) {
 }
 
 function Oscillator_createSine(frequency) {
-	return Oscillator_createOsc("sine", frequency);
+	return this.createOsc("sine", frequency);
 }
 function Oscillator_createSquare(frequency) {
-	return Oscillator_createOsc("square", frequency);
+	return this.createOsc("square", frequency);
 }
 function Oscillator_createSawtooth(frequency) {
-	return Oscillator_createOsc("saw", frequency);
+	return this.createOsc("saw", frequency);
 }
 function Oscillator_createTriangle(frequency) {
-	return Oscillator_createOsc("triangle", frequency);
+	return this.createOsc("triangle", frequency);
 }
-function Oscillator_createCustom(frequency) {
-	return Oscillator_createOsc("custom", frequency);
+function Oscillator_createCustom(frequency, real, imag) {
+//	return this.createOsc("custom", frequency);
+        return this.createCustomOsc(frequency, real, imag);
 }
 
 function Oscillator_createSine2Gain(frequency, gain) {
-	return Oscillator_createOsc2Gain("sine", frequency, gain);
+	return this.createOsc2Gain("sine", frequency, gain);
 }
 function Oscillator_createSquare2Gain(frequency, gain) {
-	return Oscillator_createOsc2Gain("square", frequency, gain);
+	return this.createOsc2Gain("square", frequency, gain);
 }
 function Oscillator_createSawtooth2Gain(frequency, gain) {
-	return Oscillator_createOsc2Gain("saw", frequency, gain);
+	return this.createOsc2Gain("saw", frequency, gain);
 }
 function Oscillator_createTriangle2Gain(frequency, gain) {
-	return Oscillator_createOsc2Gain("triangle", frequency, gain);
+	return this.createOsc2Gain("triangle", frequency, gain);
 }
 function Oscillator_createCustom2Gain(frequency, gain) {
-	return Oscillator_createOsc2Gain("custom", frequency, gain);
+	return this.createOsc2Gain("custom", frequency, gain);
 }
 
 /**
@@ -200,154 +278,192 @@ function Oscillator_getFrequencyEqualTemperament(noteName, octave) {
 
 // Sine Wave ----------------------------------
 function Oscillator_sineC(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('C', octave));
+	return this.createSine(this.funcFrequency('C', octave));
 }
 function Oscillator_sineCis(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('Cis', octave));
+	return this.createSine(this.funcFrequency('Cis', octave));
 }
 function Oscillator_sineD(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('D', octave));
+	return this.createSine(this.funcFrequency('D', octave));
 }
 function Oscillator_sineDis(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('Dis', octave));
+	return this.createSine(this.funcFrequency('Dis', octave));
 }
 function Oscillator_sineE(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('E', octave));
+	return this.createSine(this.funcFrequency('E', octave));
 }
 function Oscillator_sineF(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('F', octave));
+	return this.createSine(this.funcFrequency('F', octave));
 }
 function Oscillator_sineFis(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('Fis', octave));
+	return this.createSine(this.funcFrequency('Fis', octave));
 }
 function Oscillator_sineG(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('G', octave));
+	return this.createSine(this.funcFrequency('G', octave));
 }
 function Oscillator_sineGis(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('Gis', octave));
+	return this.createSine(this.funcFrequency('Gis', octave));
 }
 function Oscillator_sineA(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('A', octave));
+	return this.createSine(this.funcFrequency('A', octave));
 }
 function Oscillator_sineAis(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('Ais', octave));
+	return this.createSine(this.funcFrequency('Ais', octave));
 }
 function Oscillator_sineH(octave) {
-	return Oscillator_createSine(Oscillator_getFrequencyEqualTemperament('H', octave));
+	return this.createSine(this.funcFrequency('H', octave));
 }
 
-//SqSawtoothave ----------------------------------
+//Square Wave ----------------------------------
 function Oscillator_squareC(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('C', octave));
+	return this.createSquare(this.funcFrequency('C', octave));
 }
 function Oscillator_squareCis(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('Cis', octave));
+	return this.createSquare(this.funcFrequency('Cis', octave));
 }
 function Oscillator_squareD(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('D', octave));
+	return this.createSquare(this.funcFrequency('D', octave));
 }
 function Oscillator_squareDis(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('Dis', octave));
+	return this.createSquare(this.funcFrequency('Dis', octave));
 }
 function Oscillator_squareE(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('E', octave));
+	return this.createSquare(this.funcFrequency('E', octave));
 }
 function Oscillator_squareF(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('F', octave));
+	return this.createSquare(this.funcFrequency('F', octave));
 }
 function Oscillator_squareFis(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('Fis', octave));
+	return this.createSquare(this.funcFrequency('Fis', octave));
 }
 function Oscillator_squareG(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('G', octave));
+	return this.createSquare(this.funcFrequency('G', octave));
 }
 function Oscillator_squareGis(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('Gis', octave));
+	return this.createSquare(this.funcFrequency('Gis', octave));
 }
 function Oscillator_squareA(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('A', octave));
+	return this.createSquare(this.funcFrequency('A', octave));
 }
 function Oscillator_squareAis(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('Ais', octave));
+	return this.createSquare(this.funcFrequency('Ais', octave));
 }
 function Oscillator_squareH(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('H', octave));
+	return this.createSquare(this.funcFrequency('H', octave));
 }
 
 //Sawtooth Wave ----------------------------------
 function Oscillator_sawtoothC(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('C', octave));
+	return this.createSawtooth(this.funcFrequency('C', octave));
 }
 function Oscillator_sawtoothCis(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('Cis', octave));
+	return this.createSawtooth(this.funcFrequency('Cis', octave));
 }
 function Oscillator_sawtoothD(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('D', octave));
+	return this.createSawtooth(this.funcFrequency('D', octave));
 }
 function Oscillator_sawtoothDis(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('Dis', octave));
+	return this.createSawtooth(this.funcFrequency('Dis', octave));
 }
 function Oscillator_sawtoothE(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('E', octave));
+	return this.createSawtooth(this.funcFrequency('E', octave));
 }
 function Oscillator_sawtoothF(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('F', octave));
+	return this.createSawtooth(this.funcFrequency('F', octave));
 }
 function Oscillator_sawtoothFis(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('Fis', octave));
+	return this.createSawtooth(this.funcFrequency('Fis', octave));
 }
 function Oscillator_sawtoothG(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('G', octave));
+	return this.createSawtooth(this.funcFrequency('G', octave));
 }
 function Oscillator_sawtoothGis(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('Gis', octave));
+	return this.createSawtooth(this.funcFrequency('Gis', octave));
 }
 function Oscillator_sawtoothA(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('A', octave));
+	return this.createSawtooth(this.funcFrequency('A', octave));
 }
 function Oscillator_sawtoothAis(octave) {
-	return Oscillator_createSawtooth(Oscillator_getFrequencyEqualTemperament('Ais', octave));
+	return this.createSawtooth(this.funcFrequency('Ais', octave));
 }
 function Oscillator_sawtoothH(octave) {
-	return Oscillator_createSquare(Oscillator_getFrequencyEqualTemperament('H', octave));
+	return this.createSawtooth(this.funcFrequency('H', octave));
 }
 
 //Triangle Wave ----------------------------------
 function Oscillator_triangleC(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('C', octave));
+	return this.createTriangle(this.funcFrequency('C', octave));
 }
 function Oscillator_triangleCis(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('Cis', octave));
+	return this.createTriangle(this.funcFrequency('Cis', octave));
 }
 function Oscillator_triangleD(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('D', octave));
+	return this.createTriangle(this.funcFrequency('D', octave));
 }
 function Oscillator_triangleDis(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('Dis', octave));
+	return this.createTriangle(this.funcFrequency('Dis', octave));
 }
 function Oscillator_triangleE(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('E', octave));
+	return this.createTriangle(this.funcFrequency('E', octave));
 }
 function Oscillator_triangleF(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('F', octave));
+	return this.createTriangle(this.funcFrequency('F', octave));
 }
 function Oscillator_triangleFis(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('Fis', octave));
+	return this.createTriangle(this.funcFrequency('Fis', octave));
 }
 function Oscillator_triangleG(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('G', octave));
+	return this.createTriangle(this.funcFrequency('G', octave));
 }
 function Oscillator_triangleGis(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('Gis', octave));
+	return this.createTriangle(this.funcFrequency('Gis', octave));
 }
 function Oscillator_triangleA(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('A', octave));
+	return this.createTriangle(this.funcFrequency('A', octave));
 }
 function Oscillator_triangleAis(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('Ais', octave));
+	return this.createTriangle(this.funcFrequency('Ais', octave));
 }
 function Oscillator_triangleH(octave) {
-	return Oscillator_createTriangle(Oscillator_getFrequencyEqualTemperament('H', octave));
+	return this.createTriangle(this.funcFrequency('H', octave));
+}
+
+//Custom Wave ----------------------------------
+function Oscillator_customC(octave) {
+	return this.createCustom(this.funcFrequency('C', octave));
+}
+function Oscillator_customCis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Cis', octave));
+}
+function Oscillator_customD(octave) {
+	return this.createCustomOsc(this.funcFrequency('D', octave));
+}
+function Oscillator_customDis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Dis', octave));
+}
+function Oscillator_customE(octave) {
+	return this.createCustomOsc(this.funcFrequency('E', octave));
+}
+function Oscillator_customF(octave) {
+	return this.createCustomOsc(this.funcFrequency('F', octave));
+}
+function Oscillator_customFis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Fis', octave));
+}
+function Oscillator_customG(octave) {
+	return this.createCustomOsc(this.funcFrequency('G', octave));
+}
+function Oscillator_customGis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Gis', octave));
+}
+function Oscillator_customA(octave) {
+	return this.createCustomOsc(this.funcFrequency('A', octave));
+}
+function Oscillator_customAis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Ais', octave));
+}
+function Oscillator_customH(octave) {
+	return this.createCustomOsc(this.funcFrequency('H', octave));
 }
 
 // Exports ----------------------------------------------
@@ -357,35 +473,3 @@ if ("process" in global) {
 global["Oscillator"] = Oscillator;
 
 })((this || 0).self || global);
-
-/* memo
-
-gainNode の使い方で、音の調整が可能。
-http://modernweb.com/2013/10/28/audio-synthesis-in-javascript/
-gainNode を context.destination に接続した場合、gainNode.gain.value で音量調整が可能。
-gainNode を oscillator.frequency に接続した場合、frequency を gainNode.gain.value の +- 幅で揺らすことが可能。
-別 oscillator を接続すれば、周波数変更の周期の調整が可能。oscillator2.frequency.value = 1 なら 1 秒周期、など。
-そこそこの周期にすると、トレモロっぽい音色を作れそうだ。
-
-var context = new window.AudioContext();
-
-var oscillator = context.createOscillator();
-var osc2 = context.createOscillator();
-var gainNode = context.createGain();
-
-oscillator.type = "sine";
-oscillator.frequency.value = 55 * Math.pow(2,3);
-oscillator.connect(gainNode);
-
-osc2.type = "triangle";
-osc2.frequency.value = 54.5 * Math.pow(2,3);
-osc2.connect(gainNode);
-
-gainNode.connect(context.destination);
-gainNode.gain.value = 0.5;
-
-oscillator.noteOn(0);
-osc2.noteOn(0);
-oscillator.noteOff(1);
-osc2.noteOff(1);
-*/
