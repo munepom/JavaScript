@@ -10,7 +10,7 @@
 var AudioContext = window.AudioContext || window.webkitAudioContext; // Safariでは、ベンダプレフィックスが必要かいな
 if (! AudioContext) {
     alert('お使いのブラウザでは、AudioContext を使えません。\nSorry... Web Audio API is not supported in this browser.');
-	return;
+    return;
 }
 var context = new AudioContext();
 var destination = context.destination;
@@ -34,7 +34,7 @@ function Oscillator() {
     this.funcFrequency = funcFrequency;
     this.real = real;
     this.imag = imag;
-	return this;
+    return this;
 };
 
 // Header -----------------------------------------------
