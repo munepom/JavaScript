@@ -9,9 +9,11 @@
 // var --------------------------------
 var AudioContext = window.AudioContext || window.webkitAudioContext; // Safariでは、ベンダプレフィックスが必要かいな
 if (! AudioContext) {
-    alert('お使いのブラウザでは、AudioContext を使えません。\nSorry... Web Audio API is not supported in this browser.');
-    return;
+        alert('お使いのブラウザでは、AudioContext を使えません。\nSorry... Web Audio API is not supported in this browser.');
+	return;
 }
+
+
 var context = new AudioContext();
 var destination = context.destination;
 var funcFrequency = Oscillator_getFrequencyEqualTemperament; // 律取得関数 (音階の幅を設定する)
@@ -22,19 +24,19 @@ var imag; // imag: 正弦項(sin)の配列 (伝統的なB項) // PeriodicWave �
 real = new Float32Array(10);
 imag = new Float32Array(10);
 for(var i = 0; i < 10; ++i) {
-    real[i] = imag[i] = 0;
+        real[i] = imag[i] = 0;
 }
 imag[1] = 1;
 imag[2] = 0.5;
 
 // Class ------------------------------------------------
 function Oscillator() {
-    this.context = context;
-    this.destination = destination;
-    this.funcFrequency = funcFrequency;
-    this.real = real;
-    this.imag = imag;
-    return this;
+        this.context = context;
+        this.destination = destination;
+        this.funcFrequency = funcFrequency;
+        this.real = real;
+        this.imag = imag;
+	return this;
 };
 
 // Header -----------------------------------------------
@@ -133,27 +135,27 @@ function Oscillator_getDestination() {
 }
 
 function Oscillator_setReal(real) {
-    this.real = real;
+        this.real = real;
 }
 
 function Oscillator_getReal() {
-    return this.real;
+        return this.real;
 }
 
 function Oscillator_setImag(imag) {
-    this.imag = imag;
+        this.imag = imag;
 }
 
 function Oscillator_getImag() {
-    return this.imag;
+        return this.imag;
 }
 
 function Oscillator_getFuncFrequency() {
-    return this.funcFrequency();
+        return this.funcFrequency();
 }
 
 function Oscillator_setFuncFrequency(funcFrequency) {
-    this.funcFrequency = funcFrequency;
+        this.funcFrequency = funcFrequency;
 }
 
 function Oscillator_createOsc(type, frequency) {
@@ -164,16 +166,16 @@ function Oscillator_createOsc(type, frequency) {
 }
 
 function Oscillator_createCustomOsc(frequency, real, imag) {
-    var periodicWave = this.createPeriodicWave(real || this.real, imag || this.imag);
+        var periodicWave = this.createPeriodicWave(real || this.real, imag || this.imag);
 	var osc = context.createOscillator();
 	osc.frequency.value = frequency;
-    osc.setPeriodicWave(periodicWave);
+        osc.setPeriodicWave(periodicWave);
 	return osc;
 }
 
 function Oscillator_createPeriodicWave(real, imag) { // createPeriodicWave により任意の波形を生成し、OscillatorNode にセットすることで、custom として利用可能
-    var periodicWave = context.createPeriodicWave(real, imag);
-    return periodicWave;
+        var periodicWave = context.createPeriodicWave(real, imag);
+        return periodicWave;
 }
 
 function Oscillator_createGain(gainValue) {
@@ -199,14 +201,14 @@ function Oscillator_createSquare(frequency) {
 	return this.createOsc("square", frequency);
 }
 function Oscillator_createSawtooth(frequency) {
-	return this.createOsc("saw", frequency);
+	return this.createOsc("sawtooth", frequency);
 }
 function Oscillator_createTriangle(frequency) {
 	return this.createOsc("triangle", frequency);
 }
 function Oscillator_createCustom(frequency, real, imag) {
 //	return this.createOsc("custom", frequency);
-    return this.createCustomOsc(frequency, real, imag);
+        return this.createCustomOsc(frequency, real, imag);
 }
 
 function Oscillator_createSine2Gain(frequency, gain) {
@@ -216,7 +218,7 @@ function Oscillator_createSquare2Gain(frequency, gain) {
 	return this.createOsc2Gain("square", frequency, gain);
 }
 function Oscillator_createSawtooth2Gain(frequency, gain) {
-	return this.createOsc2Gain("saw", frequency, gain);
+	return this.createOsc2Gain("sawtooth", frequency, gain);
 }
 function Oscillator_createTriangle2Gain(frequency, gain) {
 	return this.createOsc2Gain("triangle", frequency, gain);
