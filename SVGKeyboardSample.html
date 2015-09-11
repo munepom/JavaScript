@@ -1,0 +1,815 @@
+<script type="text/javascript">
+/**
+ * oscillator.js
+ * @param global
+ * @author munepom
+ */
+(function(global) {
+"use strict;"
+
+// var --------------------------------
+var AudioContext = window.AudioContext || window.webkitAudioContext; // Safariでは、ベンダプレフィックスが必要かいな
+if (! AudioContext) {
+        alert('お使いのブラウザでは、AudioContext を使えません。\nSorry... Web Audio API is not supported in this browser.');
+	return;
+}
+
+
+var context = new AudioContext();
+var destination = context.destination;
+var funcFrequency = Oscillator_getFrequencyEqualTemperament; // 律取得関数 (音階の幅を設定する)
+
+var real; // real: 余弦項(cos)の配列 (伝統的なA項) // PeriodicWave 生成に用いる
+var imag; // imag: 正弦項(sin)の配列 (伝統的なB項) // PeriodicWave 生成に用いる
+// デフォルト PeriodicWave 用 real, imag 設定
+real = new Float32Array(10);
+imag = new Float32Array(10);
+for(var i = 0; i < 10; ++i) {
+        real[i] = imag[i] = 0;
+}
+imag[1] = 1;
+imag[2] = 0.5;
+
+// Class ------------------------------------------------
+function Oscillator() {
+        this.context = context;
+        this.destination = destination;
+        this.funcFrequency = funcFrequency;
+        this.real = real;
+        this.imag = imag;
+	return this;
+};
+
+// Header -----------------------------------------------
+Oscillator["prototype"]["getAudioContext"] = Oscillator_getAudioContext; // Oscillator#getAudioContext():AudioContext
+Oscillator["prototype"]["getDestination"] = Oscillator_getDestination; // Oscillator#getDestination():AudioDestinationNode
+Oscillator["prototype"]["createPeriodicWave"] = Oscillator_createPeriodicWave; // Oscillator#createPeriodicWave(real:Float32Array, imag:Float32Array):PeriodicWave
+Oscillator["prototype"]["setReal"] = Oscillator_setReal; // Oscillator#setReal(real:Float32Array):Void
+Oscillator["prototype"]["getReal"] = Oscillator_getReal; // Oscillator#getReal():PeriodicWave
+Oscillator["prototype"]["setImag"] = Oscillator_setImag; // Oscillator#setImag(imag:Float32Array):Void
+Oscillator["prototype"]["getImag"] = Oscillator_getImag; // Oscillator#getImag():PeriodicWave
+Oscillator["prototype"]["createOsc"]  = Oscillator_createOsc; // Oscillator#createOsc(type:String, frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createCustomOsc"] = Oscillator_createCustomOsc; // Oscillator#createCustomOsc(frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createGain"] = Oscillator_createGain; // Oscillator#createGain(gainValue:Integer):GainNode
+Oscillator["prototype"]["createOsc2Gain"] = Oscillator_createOsc2Gain; // Oscillator#createOsc2Gain(type:String, frequency:Integer, gainValue:Integer):{OscillatorNode, GainNode}
+Oscillator["prototype"]["createSine"] = Oscillator_createSine; // Oscillator#createSine(frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createSquare"] = Oscillator_createSquare; // Oscillator#createSquare(frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createSawtooth"] = Oscillator_createSawtooth; // Oscillator#createSawtooth(frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createTriangle"] = Oscillator_createTriangle; // Oscillator#createTriangle(frequency:Integer):OscillatorNode
+Oscillator["prototype"]["createCustom"] = Oscillator_createCustom; // Oscillator#createCustom(frequency:Integer):OscillatorNode
+
+Oscillator["prototype"]["getFrequencyEqualTemperament"] = Oscillator_getFrequencyEqualTemperament; // Oscillator_getFrequencyEqualTemperament(noteName:String, octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["sineC"] = Oscillator_sineC; // Oscillator#sineC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineCis"] = Oscillator_sineCis; // Oscillator#sineCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineD"] = Oscillator_sineD; // Oscillator#sineD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineDis"] = Oscillator_sineDis; // Oscillator#sineDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineE"] = Oscillator_sineE; // Oscillator#sineE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineF"] = Oscillator_sineF; // Oscillator#sineF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineFis"] = Oscillator_sineFis; // Oscillator#sineFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineG"] = Oscillator_sineG; // Oscillator#sineG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineGis"] = Oscillator_sineGis; // Oscillator#sineGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineA"] = Oscillator_sineA; // Oscillator#sineA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineAis"] = Oscillator_sineAis; // Oscillator#sineAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sineH"] = Oscillator_sineH; // Oscillator#sineH(octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["squareC"] = Oscillator_squareC; // Oscillator#squareC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareCis"] = Oscillator_squareCis; // Oscillator#squareCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareD"] = Oscillator_squareD; // Oscillator#squareD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareDis"] = Oscillator_squareDis; // Oscillator#squareDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareE"] = Oscillator_squareE; // Oscillator#squareE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareF"] = Oscillator_squareF; // Oscillator#squareF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareFis"] = Oscillator_squareFis; // Oscillator#squareFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareG"] = Oscillator_squareG; // Oscillator#squareG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareGis"] = Oscillator_squareGis; // Oscillator#squareGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareA"] = Oscillator_squareA; // Oscillator#squareA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareAis"] = Oscillator_squareAis; // Oscillator#squareAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["squareH"] = Oscillator_squareH; // Oscillator#squareH(octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["sawtoothC"] = Oscillator_sawtoothC; // Oscillator#sawtoothC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothCis"] = Oscillator_sawtoothCis; // Oscillator#sawtoothCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothD"] = Oscillator_sawtoothD; // Oscillator#sawtoothD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothDis"] = Oscillator_sawtoothDis; // Oscillator#sawtoothDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothE"] = Oscillator_sawtoothE; // Oscillator#sawtoothE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothF"] = Oscillator_sawtoothF; // Oscillator#sawtoothF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothFis"] = Oscillator_sawtoothFis; // Oscillator#sawtoothFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothG"] = Oscillator_sawtoothG; // Oscillator#sawtoothG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothGis"] = Oscillator_sawtoothGis; // Oscillator#sawtoothGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothA"] = Oscillator_sawtoothA; // Oscillator#sawtoothA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothAis"] = Oscillator_sawtoothAis; // Oscillator#sawtoothAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["sawtoothH"] = Oscillator_sawtoothH; // Oscillator#sawtoothH(octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["triangleC"] = Oscillator_triangleC; // Oscillator#triangleC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleCis"] = Oscillator_triangleCis; // Oscillator#triangleCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleD"] = Oscillator_triangleD; // Oscillator#triangleD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleDis"] = Oscillator_triangleDis; // Oscillator#triangleDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleE"] = Oscillator_triangleE; // Oscillator#triangleE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleF"] = Oscillator_triangleF; // Oscillator#triangleF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleFis"] = Oscillator_triangleFis; // Oscillator#triangleFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleG"] = Oscillator_triangleG; // Oscillator#triangleG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleGis"] = Oscillator_triangleGis; // Oscillator#triangleGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleA"] = Oscillator_triangleA; // Oscillator#triangleA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleAis"] = Oscillator_triangleAis; // Oscillator#triangleAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["triangleH"] = Oscillator_triangleH; // Oscillator#triangleH(octave:Integer):OscillatorNode
+
+Oscillator["prototype"]["customC"] = Oscillator_customC; // Oscillator#customC(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customCis"] = Oscillator_customCis; // Oscillator#customCis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customD"] = Oscillator_customD; // Oscillator#customD(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customDis"] = Oscillator_customDis; // Oscillator#customDis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customE"] = Oscillator_customE; // Oscillator#customE(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customF"] = Oscillator_customF; // Oscillator#customF(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customFis"] = Oscillator_customFis; // Oscillator#customFis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customG"] = Oscillator_customG; // Oscillator#customG(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customGis"] = Oscillator_customGis; // Oscillator#customGis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customA"] = Oscillator_customA; // Oscillator#customA(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customAis"] = Oscillator_customAis; // Oscillator#customAis(octave:Integer):OscillatorNode
+Oscillator["prototype"]["customH"] = Oscillator_customH; // Oscillator#customH(octave:Integer):OscillatorNode
+
+
+// Implementation ---------------------------------------
+function Oscillator_getAudioContext() {
+	return context;
+}
+
+function Oscillator_getDestination() {
+	return destination;
+}
+
+function Oscillator_setReal(real) {
+        this.real = real;
+}
+
+function Oscillator_getReal() {
+        return this.real;
+}
+
+function Oscillator_setImag(imag) {
+        this.imag = imag;
+}
+
+function Oscillator_getImag() {
+        return this.imag;
+}
+
+function Oscillator_getFuncFrequency() {
+        return this.funcFrequency();
+}
+
+function Oscillator_setFuncFrequency(funcFrequency) {
+        this.funcFrequency = funcFrequency;
+}
+
+function Oscillator_createOsc(type, frequency) {
+	var osc = context.createOscillator();
+	osc.type = type;
+	osc.frequency.value = frequency;
+	return osc;
+}
+
+function Oscillator_createCustomOsc(frequency, real, imag) {
+        var periodicWave = this.createPeriodicWave(real || this.real, imag || this.imag);
+	var osc = context.createOscillator();
+	osc.frequency.value = frequency;
+        osc.setPeriodicWave(periodicWave);
+	return osc;
+}
+
+function Oscillator_createPeriodicWave(real, imag) { // createPeriodicWave により任意の波形を生成し、OscillatorNode にセットすることで、custom として利用可能
+        var periodicWave = context.createPeriodicWave(real, imag);
+        return periodicWave;
+}
+
+function Oscillator_createGain(gainValue) {
+	var gain = context.createGain();
+	gain.gain.value = gainValue;
+	return gain;
+}
+
+function Oscillator_createOsc2Gain(type, frequency, gainValue) {
+	var osc = this.createOsc(type, frequency);
+	var gain = this.createGain(gainValue);
+	osc.connect(gain);
+	return {
+		osc:      osc,
+		gainNode: gainNode
+	};
+}
+
+function Oscillator_createSine(frequency) {
+	return this.createOsc("sine", frequency);
+}
+function Oscillator_createSquare(frequency) {
+	return this.createOsc("square", frequency);
+}
+function Oscillator_createSawtooth(frequency) {
+	return this.createOsc("sawtooth", frequency);
+}
+function Oscillator_createTriangle(frequency) {
+	return this.createOsc("triangle", frequency);
+}
+function Oscillator_createCustom(frequency, real, imag) {
+//	return this.createOsc("custom", frequency);
+        return this.createCustomOsc(frequency, real, imag);
+}
+
+function Oscillator_createSine2Gain(frequency, gain) {
+	return this.createOsc2Gain("sine", frequency, gain);
+}
+function Oscillator_createSquare2Gain(frequency, gain) {
+	return this.createOsc2Gain("square", frequency, gain);
+}
+function Oscillator_createSawtooth2Gain(frequency, gain) {
+	return this.createOsc2Gain("sawtooth", frequency, gain);
+}
+function Oscillator_createTriangle2Gain(frequency, gain) {
+	return this.createOsc2Gain("triangle", frequency, gain);
+}
+function Oscillator_createCustom2Gain(frequency, gain) {
+	return this.createOsc2Gain("custom", frequency, gain);
+}
+
+/**
+ * 平均律計算
+ * http://homepage1.nifty.com/musica/enharmonic.htm
+ */
+function Oscillator_getFrequencyEqualTemperament(noteName, octave) {
+	var base = 32.5;
+	var ratio;
+	switch (noteName) {
+	case 'C':
+		ratio = 1;
+		break;
+	case 'Cis':
+		ratio = 1.060;
+		break;
+	case 'D':
+		ratio = 1.122;
+		break;
+	case 'Dis':
+		ratio = 1.189;
+		break;
+	case 'E':
+		ratio = 1.260;
+		break;
+	case 'F':
+		ratio = 1.335;
+		break;
+	case 'Fis':
+		ratio = 1.414;
+		break;
+	case 'G':
+		ratio = 1.498;
+		break;
+	case 'Gis':
+		ratio = 1.587;
+		break;
+	case 'A':
+		ratio = 1.682;
+		break;
+	case 'Ais':
+		ratio = 1.782;
+		break;
+	case 'H':
+		ratio = 1.888;
+		break;
+	default: 
+		ratio = 1.682;
+		break;
+	}
+	return Math.ceil(base * ratio * Math.pow(2, octave));
+}
+
+// Sine Wave ----------------------------------
+function Oscillator_sineC(octave) {
+	return this.createSine(this.funcFrequency('C', octave));
+}
+function Oscillator_sineCis(octave) {
+	return this.createSine(this.funcFrequency('Cis', octave));
+}
+function Oscillator_sineD(octave) {
+	return this.createSine(this.funcFrequency('D', octave));
+}
+function Oscillator_sineDis(octave) {
+	return this.createSine(this.funcFrequency('Dis', octave));
+}
+function Oscillator_sineE(octave) {
+	return this.createSine(this.funcFrequency('E', octave));
+}
+function Oscillator_sineF(octave) {
+	return this.createSine(this.funcFrequency('F', octave));
+}
+function Oscillator_sineFis(octave) {
+	return this.createSine(this.funcFrequency('Fis', octave));
+}
+function Oscillator_sineG(octave) {
+	return this.createSine(this.funcFrequency('G', octave));
+}
+function Oscillator_sineGis(octave) {
+	return this.createSine(this.funcFrequency('Gis', octave));
+}
+function Oscillator_sineA(octave) {
+	return this.createSine(this.funcFrequency('A', octave));
+}
+function Oscillator_sineAis(octave) {
+	return this.createSine(this.funcFrequency('Ais', octave));
+}
+function Oscillator_sineH(octave) {
+	return this.createSine(this.funcFrequency('H', octave));
+}
+
+//Square Wave ----------------------------------
+function Oscillator_squareC(octave) {
+	return this.createSquare(this.funcFrequency('C', octave));
+}
+function Oscillator_squareCis(octave) {
+	return this.createSquare(this.funcFrequency('Cis', octave));
+}
+function Oscillator_squareD(octave) {
+	return this.createSquare(this.funcFrequency('D', octave));
+}
+function Oscillator_squareDis(octave) {
+	return this.createSquare(this.funcFrequency('Dis', octave));
+}
+function Oscillator_squareE(octave) {
+	return this.createSquare(this.funcFrequency('E', octave));
+}
+function Oscillator_squareF(octave) {
+	return this.createSquare(this.funcFrequency('F', octave));
+}
+function Oscillator_squareFis(octave) {
+	return this.createSquare(this.funcFrequency('Fis', octave));
+}
+function Oscillator_squareG(octave) {
+	return this.createSquare(this.funcFrequency('G', octave));
+}
+function Oscillator_squareGis(octave) {
+	return this.createSquare(this.funcFrequency('Gis', octave));
+}
+function Oscillator_squareA(octave) {
+	return this.createSquare(this.funcFrequency('A', octave));
+}
+function Oscillator_squareAis(octave) {
+	return this.createSquare(this.funcFrequency('Ais', octave));
+}
+function Oscillator_squareH(octave) {
+	return this.createSquare(this.funcFrequency('H', octave));
+}
+
+//Sawtooth Wave ----------------------------------
+function Oscillator_sawtoothC(octave) {
+	return this.createSawtooth(this.funcFrequency('C', octave));
+}
+function Oscillator_sawtoothCis(octave) {
+	return this.createSawtooth(this.funcFrequency('Cis', octave));
+}
+function Oscillator_sawtoothD(octave) {
+	return this.createSawtooth(this.funcFrequency('D', octave));
+}
+function Oscillator_sawtoothDis(octave) {
+	return this.createSawtooth(this.funcFrequency('Dis', octave));
+}
+function Oscillator_sawtoothE(octave) {
+	return this.createSawtooth(this.funcFrequency('E', octave));
+}
+function Oscillator_sawtoothF(octave) {
+	return this.createSawtooth(this.funcFrequency('F', octave));
+}
+function Oscillator_sawtoothFis(octave) {
+	return this.createSawtooth(this.funcFrequency('Fis', octave));
+}
+function Oscillator_sawtoothG(octave) {
+	return this.createSawtooth(this.funcFrequency('G', octave));
+}
+function Oscillator_sawtoothGis(octave) {
+	return this.createSawtooth(this.funcFrequency('Gis', octave));
+}
+function Oscillator_sawtoothA(octave) {
+	return this.createSawtooth(this.funcFrequency('A', octave));
+}
+function Oscillator_sawtoothAis(octave) {
+	return this.createSawtooth(this.funcFrequency('Ais', octave));
+}
+function Oscillator_sawtoothH(octave) {
+	return this.createSawtooth(this.funcFrequency('H', octave));
+}
+
+//Triangle Wave ----------------------------------
+function Oscillator_triangleC(octave) {
+	return this.createTriangle(this.funcFrequency('C', octave));
+}
+function Oscillator_triangleCis(octave) {
+	return this.createTriangle(this.funcFrequency('Cis', octave));
+}
+function Oscillator_triangleD(octave) {
+	return this.createTriangle(this.funcFrequency('D', octave));
+}
+function Oscillator_triangleDis(octave) {
+	return this.createTriangle(this.funcFrequency('Dis', octave));
+}
+function Oscillator_triangleE(octave) {
+	return this.createTriangle(this.funcFrequency('E', octave));
+}
+function Oscillator_triangleF(octave) {
+	return this.createTriangle(this.funcFrequency('F', octave));
+}
+function Oscillator_triangleFis(octave) {
+	return this.createTriangle(this.funcFrequency('Fis', octave));
+}
+function Oscillator_triangleG(octave) {
+	return this.createTriangle(this.funcFrequency('G', octave));
+}
+function Oscillator_triangleGis(octave) {
+	return this.createTriangle(this.funcFrequency('Gis', octave));
+}
+function Oscillator_triangleA(octave) {
+	return this.createTriangle(this.funcFrequency('A', octave));
+}
+function Oscillator_triangleAis(octave) {
+	return this.createTriangle(this.funcFrequency('Ais', octave));
+}
+function Oscillator_triangleH(octave) {
+	return this.createTriangle(this.funcFrequency('H', octave));
+}
+
+//Custom Wave ----------------------------------
+function Oscillator_customC(octave) {
+	return this.createCustom(this.funcFrequency('C', octave));
+}
+function Oscillator_customCis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Cis', octave));
+}
+function Oscillator_customD(octave) {
+	return this.createCustomOsc(this.funcFrequency('D', octave));
+}
+function Oscillator_customDis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Dis', octave));
+}
+function Oscillator_customE(octave) {
+	return this.createCustomOsc(this.funcFrequency('E', octave));
+}
+function Oscillator_customF(octave) {
+	return this.createCustomOsc(this.funcFrequency('F', octave));
+}
+function Oscillator_customFis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Fis', octave));
+}
+function Oscillator_customG(octave) {
+	return this.createCustomOsc(this.funcFrequency('G', octave));
+}
+function Oscillator_customGis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Gis', octave));
+}
+function Oscillator_customA(octave) {
+	return this.createCustomOsc(this.funcFrequency('A', octave));
+}
+function Oscillator_customAis(octave) {
+	return this.createCustomOsc(this.funcFrequency('Ais', octave));
+}
+function Oscillator_customH(octave) {
+	return this.createCustomOsc(this.funcFrequency('H', octave));
+}
+
+// Exports ----------------------------------------------
+if ("process" in global) {
+    module["exports"] = Oscillator;
+}
+global["Oscillator"] = Oscillator;
+
+})((this || 0).self || global);
+</script>
+<script type="text/javascript">
+// SVG 描くよ！
+// TODO: 設定も SVG で描き、このクラスで管理できるようにする
+(function(global) {
+    "use strict;"
+
+    // Class ------------------------------------------------
+    function SVGKeyboard() {
+        return this;
+    };
+    
+    function SVGKeyboard(displayOctave, osc, baseOctave, waveForm, volume) {
+        this.displayOctave = displayOctave;
+        this.osc = osc;
+        this.baseOctave = baseOctave;
+        this.waveForm = waveForm;
+        this.volume = volume;
+        return this;
+    }
+
+
+    // Header -----------------------------------------------
+    SVGKeyboard["prototype"]["setOscillator"] = SVGKeyboard_setOscillator; // SVGKeyboard#setOscillator(osc:Oscillator):Void
+    SVGKeyboard["prototype"]["setWaveForm"] = SVGKeyboard_setWaveForm; // SVGKeyboard#setWaveForm(waveForm:String):Void
+    SVGKeyboard["prototype"]["setVolume"] = SVGKeyboard_setVolume; // SVGKeyboard#setVolume(volume:Integer):Void
+    SVGKeyboard["prototype"]["setBaseOctave"] = SVGKeyboard_setBaseOctave; // SVGKeyboard#setBaseOctave(baseOctave:Integer):Void
+    SVGKeyboard["prototype"]["setDisplayOctave"] = SVGKeyboard_setDisplayOctave; // SVGKeyboard#setDisplayOctave(displayOctave:Integer):Void
+    
+    SVGKeyboard["prototype"]["draw"] = SVGKeyboard_draw; // SVGKeyboard#draw(octave:Integer):Void
+    SVGKeyboard["prototype"]["init"] = SVGKeyboard_init; // SVGKeyboard#init(displayOctave:Integer, osc:Oscillator, baseOctave:Integer, waveForm:String, volume:Integer):Void
+    SVGKeyboard["prototype"]["getStartedNum"] = SVGKeyboard_getStartedNum; // SVGKeyboard_getStartedNum(oscHash:Object):Integer
+    
+    // Implementation ---------------------------------------
+    function SVGKeyboard_setOscillator(osc) {
+        this.osc = osc;
+    }
+    
+    function SVGKeyboard_setWaveForm(waveForm) {
+        this.waveForm = waveForm;
+    }
+    
+    function SVGKeyboard_setVolume(volume) {
+        this.volume = volume;
+    }
+    
+    function SVGKeyboard_setBaseOctave(baseOctave) {
+        this.baseOctave = baseOctave;
+    }
+    
+    function SVGKeyboard_setDisplayOctave(displayOctave) {
+        this.displayOctave = displayOctave;
+    }
+    
+    function SVGKeyboard_draw() {
+        var octave = this.displayOctave || 1;
+
+        var x = 0;
+        var y = 0;
+
+        var styleWhite = 'fill:white;stroke:black';
+        var widthWhite = 30;
+        var heightWhite = 120;
+
+        var styleBlack = 'fill:black;stroke:black';
+        var widthBlack = widthWhite * 3 / 5;
+        var heightBlack = 70;
+
+        var widthOctave = widthWhite * 7;
+        var widthSvg = widthOctave * octave;
+
+        var elmSvg = document.getElementById('SVGKeyboard');
+        elmSvg.setAttribute('width', widthSvg + 'px');
+        elmSvg.setAttribute('height', heightWhite);
+ //       elmSvg.innerHTML = '<!-- White keys -->';
+
+
+/*
+        var i = 0;
+        var repeat = 7 * octave;
+        for (i = 0; i < repeat; i++) {
+            x = widthWhite * i;
+            elmSvg.innerHTML += '<rect id="SVGKeyBoard" style="' + styleWhite + '" x="' + x + '" y="' + y + '" width="' + widthWhite + '" height="' + heightWhite + '"/>';
+        }
+*/
+//        elmSvg.innerHTML += '<!-- Black keys -->';
+
+        var htmlWhite = ''; // HTML for White Keys
+        var htmlBlack = ''; // HTML for Black Keys
+
+        var i = 0;
+        var j = 0;
+        var repeatOctave = octave;
+        var repeatKey = 12;
+        var idxFillArr = [1, 3, 6, 8, 10];
+        var idAllKeyArr = ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'Ais', 'H'];
+        var mod = 0;
+        var baseWidth = 0;
+        var id = 'SVGKey_';
+        var classWhite = 'svg-keyboard-key svg-keyboard-key-white';
+        var classBlack = 'svg-keyboard-key svg-keyboard-key-black';
+        var cntBlackKey = 0;
+        for (i = 0; i < repeatOctave; i++) {
+            baseWidth = widthOctave * i;
+            cntBlackKey = 0;
+            for (j = 0; j < repeatKey; j++) {
+                id = 'SVGKey_' + idAllKeyArr[j] + '_' + i;
+                mod = j % 12;
+                if (idxFillArr.indexOf(mod) >= 0) { // Black Key
+                    cntBlackKey++;
+                    switch (mod) {
+                    case 1:   // Cis
+                    case 3:   // Dis
+                    case 6:   // Fis
+                        x = widthBlack * j;
+                        break;
+                    case 8:   // Gis
+                        x = widthBlack * j - (widthBlack * 2 / 12 * 1);
+                        break;
+                    case 10:   // Ais
+                        x = widthBlack * j - (widthBlack * 2 / 12 * 2);
+                        break;
+                    default:
+                        // do nothing in default
+                        break;
+                    }
+                    x += baseWidth;
+                    htmlBlack += '<rect id="' + id + '" class="' + classBlack + '" style="' + styleBlack + '" x="' + x + '" y="' + y + '" width="' + widthBlack + '" height="' + heightBlack + '"/>';
+                }
+                else { // White Key
+                    x = widthWhite * (j - cntBlackKey) + baseWidth;
+                    htmlWhite += '<rect id="' + id + '" class="' + classWhite + '" style="' + styleWhite + '" x="' + x + '" y="' + y + '" width="' + widthWhite + '" height="' + heightWhite + '"/>';
+                }
+            }
+        }
+        elmSvg.innerHTML += htmlWhite + htmlBlack;
+    }
+
+    function SVGKeyboard_init() {
+        var baseOctave = this.baseOctave;
+        var waveForm = this.waveForm;
+    console.log(waveForm);
+        var volume = this.volume;
+        var osc = this.osc;
+        var context = osc.getAudioContext();
+        var destination = osc.getDestination();
+        this.draw();
+        var elmKeyboard = document.querySelector('#SVGKeyboard');
+        var elmKeyArr = elmKeyboard.querySelectorAll('rect');
+        var elmKey;
+        var oscHash = {}; // 発振中の autioNode を保持し、再利用可能とする。とりあえず。メモリどうなるん？
+        var gainHash = {}; // 発振中の gainNode を保持し、再利用可能とする。とりあえず。メモリどうなるん？
+        var getStartedNum = this.getStartedNum;
+        var i = 0;
+        var len = elmKeyArr.length;
+        for (i = 0; i < len; i++) {
+            elmKey = elmKeyArr[i];
+            elmKey.addEventListener('mousedown', function(event) {
+                // start
+                var id = this.id;
+                var tmpArr = id.split('_');
+                var scale = tmpArr[1];
+                var octave = parseInt(tmpArr[2]) + baseOctave;
+                var gain = volume / (1000 * (getStartedNum(gainHash) + 1) );
+                var oscNode = oscHash[id];
+                var gainNode = gainHash[id];
+                if (oscNode && gainNode) {
+                    gainNode.gain.value = 0;
+                    oscNode.stop(context.currentTime + 0.01); // stop すると、再生成必須となる
+                    gainNode.gain.value = gain;
+                }
+                oscNode = osc[waveForm + scale](octave);
+                gainNode = gainNode || osc.createGain(gain);
+                oscNode.connect(gainNode);
+                gainNode.connect(destination);
+                oscHash[id] = oscNode;
+                gainHash[id] = gainNode;
+                oscNode.start(context.currentTime);
+            });
+            elmKey.addEventListener('mouseup', function(event) {
+                // stop
+                var id = this.id;
+                var oscNode = oscHash[id];
+                var gainNode = gainHash[id];
+                if (oscNode && gainNode) {
+                    gainNode.gain.value = 0;
+                    oscNode.stop(context.currentTime + 0.01); // stop すると、再生成必須となる
+//                  oscNode.disconnect(gainNode); // disconnect は、プチプチノイズ発生...
+                }
+            });
+            elmKey.addEventListener('mouseleave', function(event) {
+                // stop
+                var id = this.id;
+                var oscNode = oscHash[id];
+                var gainNode = gainHash[id];
+                if (oscNode && gainNode) {
+                    gainNode.gain.value = 0;
+                    oscNode.stop(context.currentTime + 0.01); // stop すると、再生成必須となる
+//                  oscNode.disconnect(gainNode); // disconnect は、プチプチノイズ発生...
+                }
+            });
+        }
+    }
+
+    function SVGKeyboard_getStartedNum(gainHash) {
+        var num = 0;
+        var key, gainNode;
+        for (key in gainHash) {
+            if (gainHash.hasOwnProperty(key)) {
+                gainNode = gainHash[key];
+                if (gainNode && gainNode.gain.value) {
+                    num++;
+                }
+            }
+        }
+        return num;
+    }
+
+    // Exports ----------------------------------------------
+    if ("process" in global) {
+        module["exports"] = SVGKeyboard;
+    }
+    global["SVGKeyboard"] = SVGKeyboard;
+
+})((this || 0).self || global);
+</script>
+<div>KeyBoard</div>
+<br />
+<div>
+    表示オクターブ数&nbsp;
+    <select id="DisplayOctaveSelector">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3" selected>3</option>
+        <option value="4">4</option>
+        <option value="4">5</option>
+        <option value="4">6</option>
+    </select>
+</div>
+<br />
+<div>
+    基底オクターブ&nbsp;
+    <select id="BaseOctaveSelector">
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="4">5</option>
+        <option value="4">6</option>
+    </select>
+</div>
+<br />
+<div>
+    波形選択&nbsp;
+    <select id="WaveSelector">
+        <option value="sine">サイン波</option>
+        <option value="sawtooth">ノコギリ波</option>
+        <option value="square">矩形波</option>
+        <option value="triangle">三角波</option>
+        <option value="custom">カスタム波</option>
+    </select>
+</div>
+<div>
+    音量&nbsp;<input id="VolumeSlider" type="range" min="0" max="100" step="1" value="20"></input>&nbsp;<span id="VolumeDisplay"></span>
+</div>
+<br />
+<svg id="SVGKeyboard" xml:space="preserve"></svg>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function(event) {
+    var getInputValue = function(elm) {
+        return elm.value;
+    };
+    
+    var getSelectedValue = function(elm) {
+        return elm.options[elm.selectedIndex].value;
+    };
+    
+    var getInputValue2Int = function(elm) {
+        return parseInt( getInputValue(elm) );
+    };
+    
+    var getSelectedValue2Int = function(elm) {
+        return parseInt( getSelectedValue(elm) );
+    };
+   
+    var keyboard = new SVGKeyboard();
+    
+    // get base octave
+    var elmBaseOctaveSelector = document.querySelector('#BaseOctaveSelector');
+    var baseOctave = getSelectedValue2Int(elmBaseOctaveSelector);
+    elmBaseOctaveSelector.addEventListener('change', function(event) {
+        baseOctave = getSelectedValue2Int(elmBaseOctaveSelector);
+        keyboard.setBaseOctave(baseOctave);
+        keyboard.init();
+    });
+    
+    // get display octave
+    var elmDisplayOctaveSelector = document.querySelector('#DisplayOctaveSelector');
+    var displayOctave = getSelectedValue2Int(elmDisplayOctaveSelector);
+    elmDisplayOctaveSelector.addEventListener('change', function(event) {
+        displayOctave = getSelectedValue2Int(elmDisplayOctaveSelector);
+        keyboard.setDisplayOctave(displayOctave);
+        keyboard.init();
+    });
+    
+    // init wave form
+    var elmWaveSelector = document.querySelector('#WaveSelector');
+    var waveForm = getSelectedValue(elmWaveSelector);
+    elmWaveSelector.addEventListener('change', function(event) {
+        waveForm = getSelectedValue(elmWaveSelector);
+        keyboard.setWaveForm(waveForm);
+        keyboard.init();
+    });
+    
+    // init volume
+    var elmVolumeSlider = document.querySelector('#VolumeSlider');
+    var elmVolumeDisplay = document.querySelector('#VolumeDisplay');
+    var volume = getInputValue2Int(elmVolumeSlider);
+    elmVolumeDisplay.innerText = volume;
+    elmVolumeSlider.addEventListener('change', function(event) {
+        volume = getInputValue2Int(elmVolumeSlider);
+        keyboard.setVolume(volume);
+        keyboard.init();
+        elmVolumeDisplay.innerText = volume;
+    });
+    
+    // init keyboard
+    var osc = new Oscillator(); // create oscillator
+    keyboard.setDisplayOctave(displayOctave);
+    keyboard.setOscillator(osc);
+    keyboard.setBaseOctave(baseOctave);
+    keyboard.setWaveForm(waveForm);
+    keyboard.setVolume(volume); // max of volume = 100
+    keyboard.init();
+});
+</script>
