@@ -55,7 +55,9 @@
         var idAllKeyArr = ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'Ais', 'H'];
         var mod = 0;
         var baseWidth = 0;
-        var id = '';
+        var id = 'SVGKey_';
+        var classWhite = 'svg-keyboard-key svg-keyboard-key-white';
+        var classBlack = 'svg-keyboard-key svg-keyboard-key-black';
         var cntBlackKey = 0;
         for (i = 0; i < repeatOctave; i++) {
             baseWidth = widthOctave * i;
@@ -82,11 +84,11 @@
                         break;
                     }
                     x += baseWidth;
-                    htmlBlack += '<rect id="' + id + '" style="' + styleBlack + '" x="' + x + '" y="' + y + '" width="' + widthBlack + '" height="' + heightBlack + '"/>';
+                    htmlBlack += '<rect id="' + id + '" class="' + classBlack + '" style="' + styleBlack + '" x="' + x + '" y="' + y + '" width="' + widthBlack + '" height="' + heightBlack + '"/>';
                 }
                 else { // White Key
                     x = widthWhite * (j - cntBlackKey) + baseWidth;
-                    htmlWhite += '<rect id="' + id + '" style="' + styleWhite + '" x="' + x + '" y="' + y + '" width="' + widthWhite + '" height="' + heightWhite + '"/>';
+                    htmlWhite += '<rect id="' + id + '" class="' + classWhite + '" style="' + styleWhite + '" x="' + x + '" y="' + y + '" width="' + widthWhite + '" height="' + heightWhite + '"/>';
                 }
             }
         }
